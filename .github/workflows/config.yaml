@@ -1,42 +1,41 @@
 
-name: multi-stage-deploy
+name: branch-protection
+
 on:
   push:
-    branches: [production]
+    branches:
+      - main
+
 jobs:
-  build:
+  enforce-branch-rules:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12.x]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Install dependencies
-        run: npm install
-      - name: Build application
-        run: npm run build
-  stage:
-    runs-on: staging
-    needs: build
-    steps:
-      - name: Deploy application
+      - name: Check for code changes
         uses: actions/github-script@v3
         with:
-          script: node deploy.js
-      - name: Configure environment variables
-        run: |
-          echo "API_URL: ${{ secrets.API_URL }}" >> $GITHUB_ENV
-          echo "DB_CONNECTION: ${{ secrets.DB_CONNECTION }}" >> $GITHUB_ENV
-  production-deploy:
-    runs-on: production
-    needs: build
-    steps:
-      - name: Deploy application
-        uses: actions/github-script@v3
+          script: |
+            const commits = await github.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha
+            });
+            const changedFiles = await github.repos.listFilesForCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha
+            });
+            if (commits.data.length > 0 && changedFiles.data.length > 0) {
+              core.setOutput("changes", true);
+            } else {
+              core.setOutput("changes", false);
+            }
+      - name: Get code coverage report
+        uses: actions/download-artifact@v2
         with:
-         
+          name: code-coverage-report
+          path: code-coverage-report
+      - name: Verify code linting and unit tests
+        uses: actions/download-artifact@v2
+        with:
+          name: code-linting-and-unit-tests
+          path:
