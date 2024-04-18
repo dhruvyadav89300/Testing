@@ -1,0 +1,42 @@
+
+name: multi-stage-deploy.yml
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Dependencies
+        run: npm install
+      - name: Build Application
+        run: npm run build
+
+  stage:
+    runs-on: staging
+    needs: build
+    steps:
+      - name: Deploy Application
+        uses: some/staging/deploy/action@v1
+        with:
+          application: ${{ needs.build.outputs.app }}
+          environment: staging
+          api_url: ${{ secrets.API_URL }}
+          database_connection: ${{ secrets.DB_CONNECTION }}
+
+  production-deploy:
+    runs-on: production
+    needs: build
+    steps:
+      - name: Deploy Application
+        uses: some/production/deploy/action@v1
+        with:
+          application: ${{ needs.build.outputs.app }}
+          environment: production
+          api_url: ${{ secrets.API_URL }}
+          database_connection: ${{ secrets.DB_CONNECTION }}
+          secrets_manager: ${{ secrets.PRODUCTION_SECRETS_MANAGER }}
