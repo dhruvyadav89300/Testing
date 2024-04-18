@@ -1,38 +1,39 @@
 
 name: multi-stage-deploy.yml
-
 on:
   push:
     branches:
       - production
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: '12.x'
+          node-version: ${{ matrix.node-version }}
       - name: Install dependencies
         run: npm install
-      - name: Build production bundle
+      - name: Build application
         run: npm run build
   stage:
     runs-on: staging
     needs: build
     steps:
-      - name: Deploy to staging environment
-        run: deploy.sh
-      - name: Configure environment variables
-        run: configure.sh
+      - name: Deploy application
+        run: npm run deploy
+      - name: Configure staging environment
+        run: set-env API_URL=example.com DB_CONNECTION=staging
   production-deploy:
     runs-on: production
     needs: build
     steps:
-      - name: Deploy to production environment
-        run: deploy.sh
-      - name: Configure secrets manager
-        run: configure-secrets.sh
+      - name: Deploy application
+        run: npm run deploy
+      - name: Access sensitive environment variables
+        run: access-secrets-manager
