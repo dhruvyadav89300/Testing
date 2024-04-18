@@ -1,41 +1,34 @@
-
-name: ci.yml
+---
+name: e2e-tests
 on:
-  push:
+  pull_request:
     branches:
-      - main
-
+      - test
 jobs:
-  lint-and-test:
+  run-e2e-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x]
+        node-version: [12.x]
+        db-tool: [mysql, postgresql]
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup Node.js
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Setup Node
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install Dependencies
-        run: npm install
-      - name: Run Linter
-        run: eslint .
-      - name: Run Unit Tests
-        run: npm test
-      - name: Fail on Linting Errors or Test Failures
-        if: ${{ failure() }}
-        run: exit 1
-
-  coverage-report:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Additional Dependencies
-        run: npm install nyc
-      - name: Run Coverage Tool
-        run: nyc npm test
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v2
+      - name: Install Database Tool
+        run: sudo apt-get install ${{ matrix.db-tool }}
+      - name: Connect to Test Database
+        run: ${{ matrix.db-tool }} -u username -p password -D test_database < sample_data.sql
+      - name: Start Application
+        run: npm start
+      - name: Run End-to-End Tests
+        uses: cypress-io/github-action@v2
         with:
-          name: coverage-report
-          path: coverage/
+          record: true
+      - name: Clean Up Test Database
+        run: ${{ matrix.db-tool }} -u username -p password -D test_database < clean_up.sql
+      - name: Fail Workflow on Test Failures
+        if
