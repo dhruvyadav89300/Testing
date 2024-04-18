@@ -1,9 +1,12 @@
 
-name: multi-stage-deploy.yml
+# This is a multi-stage deployment YAML file
+
+name: multi-stage-deploy
 
 on:
   push:
-    branches: [production]
+    branches: 
+      - production
 
 jobs:
   build:
@@ -15,19 +18,34 @@ jobs:
         run: npm install
       - name: Build application bundle
         run: npm run build
+    env:
+      NODE_ENV: production
+
   stage:
-    runs-on: [staging environment runner]
-    needs: [build]
+    runs-on: staging
+    needs: build
+    environment:
+      name: staging
     steps:
-      - name: Deploy application
-        run: <insert deploy command here>
-      - name: Configure environment
-        run: <insert environment configuration command here>
+      - name: Deploy to staging
+        uses: some-deploy-action@v1
+        with:
+          app: ${{ needs.build.outputs.app }}
+          env: staging
+    env:
+      API_URL: staging-api-url
+      DB_CONNECTION: staging-db-connection
+
   production-deploy:
-    runs-on: [production environment runner]
-    needs: [build]
+    runs-on: production
+    needs: build
+    environment:
+      name: production
     steps:
-      - name: Deploy application
-        run: <insert deploy command here>
-      - name: Access sensitive environment variables
-        uses: <insert secrets manager here>
+      - name: Deploy to production
+        uses: some-deploy-action@v1
+        with:
+          app: ${{ needs.build.outputs.app }}
+          env: production
+        env:
+          API_URL: ${{
