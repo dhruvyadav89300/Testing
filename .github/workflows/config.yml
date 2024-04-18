@@ -1,39 +1,44 @@
 
 name: multi-stage-deploy.yml
-
 on:
   push:
     branches:
       - production
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-      - name: Install Dependencies
+      - uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install dependencies
         run: npm install
-      - name: Build Production-Ready Application
+      - name: Build application
         run: npm run build
   stage:
     runs-on: staging
     needs: build
+    environment:
+      name: staging
     steps:
-      - name: Deploy Application
-        uses: actions/checkout@v2
-      - name: Configure Staging Environment
+      - name: Deploy application to staging
+        uses: actions/upload-artifact@v1
+        with:
+          name: built-app
+          path: build/
+      - name: Configure staging environment
         run: |
           echo "API_URL=${{ secrets.API_URL }}" >> $GITHUB_ENV
           echo "DB_CONNECTION=${{ secrets.DB_CONNECTION }}" >> $GITHUB_ENV
   production-deploy:
     runs-on: production
     needs: build
+    environment:
+      name: production
     steps:
-      - name: Deploy Application
-        uses: actions/checkout@v2
-      - name: Configure Production Environment
-        run: |
-          echo "API_URL=${{ secrets.API_URL }}" >> $GITHUB_ENV
-          echo "DB_CONNECTION=${{ secrets.DB_CONNECTION }}" >> $GITHUB_ENV
-          echo "SECRET_KEY=${{ secrets.S
+      - name
