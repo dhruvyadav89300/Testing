@@ -3,44 +3,37 @@ name: multi-stage-deploy.yml
 
 on:
   push:
-    branches: 
-      - production 
+    branches:
+      - production
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12.x]
     steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Install dependencies
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Install Dependencies
         run: npm install
-      - name: Build application
+      - name: Build Production-Ready Application
         run: npm run build
-
   stage:
     runs-on: staging
     needs: build
     steps:
-      - uses: actions/checkout@v2
-      - name: Deploy application
-        run: npm run deploy
-      - name: Configure environment
-        run: npm run config
-
+      - name: Deploy Application
+        uses: actions/checkout@v2
+      - name: Configure Staging Environment
+        run: |
+          echo "API_URL=${{ secrets.API_URL }}" >> $GITHUB_ENV
+          echo "DB_CONNECTION=${{ secrets.DB_CONNECTION }}" >> $GITHUB_ENV
   production-deploy:
     runs-on: production
     needs: build
     steps:
-      - uses: actions/checkout@v2
-      - name: Deploy application
-        run: npm run deploy
-      - name: Access sensitive environment variables
-        uses: hashicorp/vault-action@v1
-        with:
-          vault-token: $
+      - name: Deploy Application
+        uses: actions/checkout@v2
+      - name: Configure Production Environment
+        run: |
+          echo "API_URL=${{ secrets.API_URL }}" >> $GITHUB_ENV
+          echo "DB_CONNECTION=${{ secrets.DB_CONNECTION }}" >> $GITHUB_ENV
+          echo "SECRET_KEY=${{ secrets.S
