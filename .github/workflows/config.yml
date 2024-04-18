@@ -1,34 +1,33 @@
----
-name: e2e-tests
+
+name: multi-stage-deploy.yml
+
 on:
-  pull_request:
-    branches:
-      - test
+  push:
+    branches: [production]
+
 jobs:
-  run-e2e-tests:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12.x]
-        db-tool: [mysql, postgresql]
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v2
-      - name: Setup Node
-        uses: actions/setup-node@v2
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Install Database Tool
-        run: sudo apt-get install ${{ matrix.db-tool }}
-      - name: Connect to Test Database
-        run: ${{ matrix.db-tool }} -u username -p password -D test_database < sample_data.sql
-      - name: Start Application
-        run: npm start
-      - name: Run End-to-End Tests
-        uses: cypress-io/github-action@v2
-        with:
-          record: true
-      - name: Clean Up Test Database
-        run: ${{ matrix.db-tool }} -u username -p password -D test_database < clean_up.sql
-      - name: Fail Workflow on Test Failures
-        if
+      - name: Install dependencies
+        run: npm install
+      - name: Build application bundle
+        run: npm run build
+  stage:
+    runs-on: [staging environment runner]
+    needs: [build]
+    steps:
+      - name: Deploy application
+        run: <insert deploy command here>
+      - name: Configure environment
+        run: <insert environment configuration command here>
+  production-deploy:
+    runs-on: [production environment runner]
+    needs: [build]
+    steps:
+      - name: Deploy application
+        run: <insert deploy command here>
+      - name: Access sensitive environment variables
+        uses: <insert secrets manager here>
