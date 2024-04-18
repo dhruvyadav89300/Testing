@@ -1,5 +1,7 @@
 
-name: multi-stage-deploy.yml
+multi-stage-deploy.yml:
+
+name: multi-stage-deploy
 
 on:
   push:
@@ -9,34 +11,41 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Dependencies
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install dependencies
         run: npm install
-      - name: Build Application
+      - name: Build application
         run: npm run build
-
+    
   stage:
     runs-on: staging
     needs: build
+    environment:
+      name: staging
     steps:
-      - name: Deploy Application
-        uses: some/staging/deploy/action@v1
-        with:
-          application: ${{ needs.build.outputs.app }}
-          environment: staging
-          api_url: ${{ secrets.API_URL }}
-          database_connection: ${{ secrets.DB_CONNECTION }}
-
+      - name: Deploy application
+        run: npm run deploy
+      - name: Configure environment variables
+        run: npm run configure-env
+    
   production-deploy:
     runs-on: production
     needs: build
+    environment:
+      name: production
     steps:
-      - name: Deploy Application
-        uses: some/production/deploy/action@v1
-        with:
-          application: ${{ needs.build.outputs.app }}
-          environment: production
-          api_url: ${{ secrets.API_URL }}
-          database_connection: ${{ secrets.DB_CONNECTION }}
-          secrets_manager: ${{ secrets.PRODUCTION_SECRETS_MANAGER }}
+      - name: Deploy application
+        run: npm run deploy
+      - name: Configure environment variables
+        run: npm run configure-env
+      - name: Access sensitive environment variables
+        run: npm
