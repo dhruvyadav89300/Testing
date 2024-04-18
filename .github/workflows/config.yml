@@ -1,0 +1,41 @@
+
+name: ci.yml
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [14.x]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install Dependencies
+        run: npm install
+      - name: Run Linter
+        run: eslint .
+      - name: Run Unit Tests
+        run: npm test
+      - name: Fail on Linting Errors or Test Failures
+        if: ${{ failure() }}
+        run: exit 1
+
+  coverage-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Additional Dependencies
+        run: npm install nyc
+      - name: Run Coverage Tool
+        run: nyc npm test
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-report
+          path: coverage/
