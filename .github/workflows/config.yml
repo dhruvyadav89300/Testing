@@ -1,40 +1,42 @@
 
-name: ci.yml
+name: api-docs.yml
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  lint-and-test:
+  build-docs:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [14.x]
-        python-version: [3.7]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Install dependencies
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 18
+      - name: Install npm
         run: npm install
-      - name: Run code linting
-        run: eslint .
-      - name: Run unit tests
-        run: npm test
-      - name: Fail if errors or failures occur
-        if: ${{ failure() }}
-        run: exit 1
-
-  coverage-report:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install dependencies
-        run: npm install nyc
-      - name: Run coverage tool
-        run: nyc report
-      - name: Upload coverage report
+      - name: Install Swagger or JSDoc
+        run: npm install swagger or jsdoc
+      - name: Generate API documentation
+        run: npm run generate-docs
+      - name: Archive documentation
         uses: actions/upload-artifact@v2
         with:
-          name: code-coverage
-          path: coverage/
+          name: generated-docs
+          path: <generated-docs-folder>
+  
+  deploy-docs:
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest, macOS-latest]
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: generated-docs
+          path: <generated-docs-folder>
+      - name: Deploy documentation
+        run
