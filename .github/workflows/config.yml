@@ -1,7 +1,5 @@
 
-multi-stage-deploy.yml:
-
-name: multi-stage-deploy
+name: multi-stage-deploy.yml
 
 on:
   push:
@@ -11,41 +9,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12.x]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v1
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '12.x'
       - name: Install dependencies
         run: npm install
-      - name: Build application
+      - name: Build production bundle
         run: npm run build
-    
   stage:
     runs-on: staging
     needs: build
-    environment:
-      name: staging
     steps:
-      - name: Deploy application
-        run: npm run deploy
+      - name: Deploy to staging environment
+        run: deploy.sh
       - name: Configure environment variables
-        run: npm run configure-env
-    
+        run: configure.sh
   production-deploy:
     runs-on: production
     needs: build
-    environment:
-      name: production
     steps:
-      - name: Deploy application
-        run: npm run deploy
-      - name: Configure environment variables
-        run: npm run configure-env
-      - name: Access sensitive environment variables
-        run: npm
+      - name: Deploy to production environment
+        run: deploy.sh
+      - name: Configure secrets manager
+        run: configure-secrets.sh
