@@ -1,39 +1,45 @@
+name: deploy-multi-env.yml
 
-name: multi-stage-deploy.yml
 on:
   push:
-    branches:
-      - production
+    branches: [main]
+
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12.x]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Set up Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
+      - uses: actions/checkout@v2
       - name: Install dependencies
-        run: npm install
-      - name: Build application
-        run: npm run build
-  stage:
-    runs-on: staging
-    needs: build
-    steps:
-      - name: Deploy application
-        run: npm run deploy
-      - name: Configure staging environment
-        run: set-env API_URL=example.com DB_CONNECTION=staging
-  production-deploy:
-    runs-on: production
-    needs: build
-    steps:
-      - name: Deploy application
-        run: npm run deploy
-      - name: Access sensitive environment variables
-        run: access-secrets-manager
+        run: pip install boto3
+      - name: Deploy staging environment
+        if: ${{ github.event.head_commit.ref == 'staging' }}
+        uses: bash:action-runner/bash-core-actions.1-0
+        with:
+          script: |
+            echo "Setting up AWS credentials for staging..."
+            source ~/.aws/config
+            export AWS_STAGING_KEY=$(aws configure get aws_access_key_id)
+            export AWS_STAGING_SECRET=$(aws configure get aws_secret_access_key)
+          env:
+            AWSCRED_STAGING: ${{ secrets.AWSCRED_STAGING }}
+        runs-on: ubuntu-latest
+      - name: Deploy production environment
+        if: ${{ github.event.head_commit.ref == 'master' }}
+        uses: bash:action-runner/bash-core-actions.1-0
+        with:
+          script: |
+            echo "Setting up AWS credentials for production..."
+            source ~/.aws/config
+            export AWS_PRODUCTION_KEY=$(aws configure get aws_access_key_id)
+            export AWS_PRODUCTION_SECRET=$(aws configure get aws_secret_access_key)
+          env:
+            AWSCRED_PRODUCTION: ${{ secrets.AWSCRED_CV13.0/A2FJHG567890-STAGING }}
+      - name: Configure environment variables for staging using boto3
+        run: |
+          echo "Configuring AWS environment variables..."
+          python -c "import boto3; session = boto3.Session(profile_name='staging'); [session.default_session().boto3_io.load_profile(profile['name']) for profile in json.loads('${{ secrets.AWS_CONFIG_PROFILES }}')]"
+      - name: Configure environment variables for production using boto3
+        if: always()
+        run: |
+          echo "Configuring AWS environment variables..."
+          python -c "import boto3; session = boto3.Session(profile_name='production'); [session.default_session().boto3_io.load_profile(profile['name']) for profile in json.loads('${{ secrets.AWS_CONFIG_PROFILES }}')]"
